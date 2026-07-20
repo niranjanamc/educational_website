@@ -24,6 +24,7 @@ export const Landing3D: React.FC<Landing3DProps> = ({ onSelectSubject }) => {
   const [selectedSub, setSelectedSub] = useState<SubjectConfig | null>(null);
   const [isZooming, setIsZooming] = useState(false);
   const callbackRef = useRef(onSelectSubject);
+  const clickedSubjectId = useRef<string | null>(null);
 
   useEffect(() => {
     callbackRef.current = onSelectSubject;
@@ -81,7 +82,7 @@ export const Landing3D: React.FC<Landing3DProps> = ({ onSelectSubject }) => {
     },
     {
       id: 'english',
-      name: 'English (SL)',
+      name: 'English (Soon)',
       subName: 'ದ್ವಿತೀಯ ಭಾಷೆ ಇಂಗ್ಲಿಷ್',
       color: '#e0aaff',
       emissive: '#5a189a',
@@ -96,6 +97,9 @@ export const Landing3D: React.FC<Landing3DProps> = ({ onSelectSubject }) => {
   useEffect(() => {
     const mount = mountRef.current;
     if (!mount) return;
+
+    // PREVENT STRICT MODE DOUBLE-CANVAS DUPLICATION
+    mount.innerHTML = '';
 
     // SCENE SETUP
     const scene = new THREE.Scene();
@@ -138,8 +142,6 @@ export const Landing3D: React.FC<Landing3DProps> = ({ onSelectSubject }) => {
     });
     const centralStar = new THREE.Mesh(coreGeometry, coreMaterial);
     scene.add(centralStar);
-
-
 
     // Create background starfield (2000 particles)
     const starCount = 2000;
@@ -300,6 +302,7 @@ export const Landing3D: React.FC<Landing3DProps> = ({ onSelectSubject }) => {
         setIsZooming(true);
         zoomTargetMesh = currentHover.mesh;
         targetZoom = new THREE.Vector3().copy(currentHover.mesh.position);
+        clickedSubjectId.current = currentHover.config.id;
       }
     };
 
@@ -356,13 +359,13 @@ export const Landing3D: React.FC<Landing3DProps> = ({ onSelectSubject }) => {
         camera.position.lerp(zoomCamPos, 0.06);
         camera.lookAt(targetZoom);
 
-        if (camera.position.distanceTo(zoomCamPos) < 0.2) {
+        if (camera.position.distanceTo(zoomCamPos) < 0.25) {
           cancelAnimationFrame(animationFrameId);
           setIsZooming(false);
           document.body.style.cursor = 'default';
           // Trigger callbacks safely
-          if (callbackRef.current && selectedSub) {
-            callbackRef.current(selectedSub.id);
+          if (callbackRef.current && clickedSubjectId.current) {
+            callbackRef.current(clickedSubjectId.current);
           }
           return;
         }
@@ -390,10 +393,10 @@ export const Landing3D: React.FC<Landing3DProps> = ({ onSelectSubject }) => {
       if (mount.contains(renderer.domElement)) {
         mount.removeChild(renderer.domElement);
       }
-      // dispose of standard geometries and materials to avoid memory leaks
       scene.clear();
+      renderer.dispose();
     };
-  }, [isZooming, selectedSub]);
+  }, [isZooming]);
 
   return (
     <div className="flex-1 flex flex-col items-center justify-start min-h-[90vh] py-6 px-4 select-none relative overflow-hidden bg-[#07080f]">
